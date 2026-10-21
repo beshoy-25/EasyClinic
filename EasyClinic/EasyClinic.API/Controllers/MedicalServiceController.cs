@@ -1,6 +1,8 @@
-﻿using EasyClinic.API.Data;
+﻿using EasyClinic.API.Auth;
+using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.MedicalService;
 using EasyClinic.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -9,6 +11,7 @@ namespace EasyClinic.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class MedicalServiceController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -51,6 +54,7 @@ namespace EasyClinic.API.Controllers
             return Ok(medicalService);
         }
         [HttpPost]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<ActionResult<MedicalServiceDTO>> Create(CreateMedicalServiceDTO dto)
         {
             var medicalService = new MedicalService
@@ -75,6 +79,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpPut("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Update(int id, CreateMedicalServiceDTO dto)
         {
             var medicalService = await _context.MedicalServices.FindAsync(id);
@@ -93,6 +98,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpDelete("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Delete(int id)
         {
             var medicalService = await _context.MedicalServices.FindAsync(id);

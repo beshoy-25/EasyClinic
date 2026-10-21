@@ -1,4 +1,5 @@
-﻿using EasyClinic.API.Data;
+﻿using EasyClinic.API.Auth;
+using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.AppointmentStatus;
 using EasyClinic.API.Models;
 using M04.MinimalFluentValidation.Filters;
@@ -12,13 +13,14 @@ namespace EasyClinic.API.Endpoints
         public static void MapAppointmentStatusEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/appointmentStatus")
-                            .WithTags("AppointmentStatus");
+                            .WithTags("AppointmentStatus")
+                            .RequireAuthorization();
 
             group.MapGet("/", GetAll);
-            group.MapGet("/{id:int:min(1)}", GetById).WithName("GetAppointmentStatusById"); ;
-            group.MapPost("/", Create).AddEndpointFilter<ValidationFilter<CreateAppointmentStatusDTO>>();
-            group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateAppointmentStatusDTO>>();
-            group.MapDelete("/{id:int:min(1)}", Delete);
+            group.MapGet("/{id:int:min(1)}", GetById).WithName("GetAppointmentStatusById");
+            group.MapPost("/", Create).AddEndpointFilter<ValidationFilter<CreateAppointmentStatusDTO>>().RequireAuthorization(Policies.AdminOnly);
+            group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateAppointmentStatusDTO>>().RequireAuthorization(Policies.AdminOnly);
+            group.MapDelete("/{id:int:min(1)}", Delete).RequireAuthorization(Policies.AdminOnly);
 
         }
 

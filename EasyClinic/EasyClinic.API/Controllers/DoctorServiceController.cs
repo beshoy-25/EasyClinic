@@ -1,6 +1,8 @@
-﻿using EasyClinic.API.Data;
+﻿using EasyClinic.API.Auth;
+using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.DoctorService;
 using EasyClinic.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace EasyClinic.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class DoctorServiceController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -69,6 +72,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<ActionResult<DoctorServiceDTO>> Create(CreateDoctorServiceDTO dto)
         {
             var doctorExist = await _context.Doctors.AnyAsync(d => d.Id == dto.DoctorId);
@@ -110,6 +114,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpPut("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Update(int id, CreateDoctorServiceDTO dto)
         {
             var doctorService = await _context.DoctorServices.FindAsync(id);
@@ -139,6 +144,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpDelete("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Delete(int id)
         {
             var doctorService = await _context.DoctorServices.FindAsync(id);

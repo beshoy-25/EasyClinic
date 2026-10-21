@@ -1,6 +1,8 @@
-﻿using EasyClinic.API.Data;
+﻿using EasyClinic.API.Auth;
+using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Patient;
 using EasyClinic.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -9,6 +11,7 @@ namespace EasyClinic.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = Policies.StaffOnly)]
     public class PatientController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -117,6 +120,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpDelete("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Delete(int id)
         {
             var patient = await _context.Patients.FindAsync(id);

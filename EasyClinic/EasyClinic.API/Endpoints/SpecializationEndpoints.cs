@@ -1,4 +1,5 @@
 ﻿
+using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Specializations;
 using EasyClinic.API.Models;
@@ -12,13 +13,14 @@ namespace EasyClinic.API.Endpoints
         public static void MapSpecializationEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/specializations")
-                            .WithTags("Specializations");
+                            .WithTags("Specializations")
+                            .RequireAuthorization();
 
             group.MapGet("/", GetAll);
             group.MapGet("/{id:int:min(1)}", GetById);
-            group.MapPost("/", Create).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>();
-            group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>();
-            group.MapDelete("/{id:int:min(1)}", Delete);
+            group.MapPost("/", Create).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>().RequireAuthorization(Policies.AdminOnly);
+            group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>().RequireAuthorization(Policies.AdminOnly);
+            group.MapDelete("/{id:int:min(1)}", Delete).RequireAuthorization(Policies.AdminOnly);
 
         }
 

@@ -1,6 +1,8 @@
-﻿using EasyClinic.API.Data;
+﻿using EasyClinic.API.Auth;
+using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -10,6 +12,7 @@ namespace EasyClinic.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class DoctorController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -66,6 +69,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<ActionResult<DoctorDTO>> Create(CreateDoctorDTO dto)
         {
             var specializationExist = await _context.Specializations
@@ -104,6 +108,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpPut("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Update(int id, CreateDoctorDTO dto)
         {
             var doctor = await _context.Doctors.FindAsync(id);
@@ -129,6 +134,7 @@ namespace EasyClinic.API.Controllers
             return NoContent();
         }
         [HttpPatch("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Patch(int id, PatchDoctorDto dto)
         {
             var doctor = await _context.Doctors.FindAsync(id);
@@ -168,7 +174,8 @@ namespace EasyClinic.API.Controllers
             return NoContent();
         }
 
-            [HttpDelete("{id:int:min(1)}")]
+        [HttpDelete("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Delete(int id)
         {
             var doctor = await _context.Doctors.FindAsync(id);

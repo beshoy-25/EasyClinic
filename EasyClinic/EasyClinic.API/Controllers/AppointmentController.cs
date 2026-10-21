@@ -1,8 +1,10 @@
-﻿using EasyClinic.API.Data;
+﻿using EasyClinic.API.Auth;
+using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Appointment;
 using EasyClinic.API.DTOs.DoctorService;
 using EasyClinic.API.Models;
 using EasyClinic.API.Options;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -11,6 +13,7 @@ namespace EasyClinic.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = Policies.StaffOnly)]
     public class AppointmentController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -302,6 +305,7 @@ namespace EasyClinic.API.Controllers
         }
 
         [HttpDelete("{id:int:min(1)}")]
+        [Authorize(Policy = Policies.StaffOnly)]
         public async Task<IActionResult> Delete(int id)
         {
             var appointment = await _context.Appointments.FindAsync(id);
