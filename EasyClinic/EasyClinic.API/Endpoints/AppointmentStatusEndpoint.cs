@@ -1,6 +1,7 @@
 ﻿using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.AppointmentStatus;
+using EasyClinic.API.DTOs.Specializations;
 using EasyClinic.API.Models;
 using M04.MinimalFluentValidation.Filters;
 using Microsoft.EntityFrameworkCore;
@@ -17,8 +18,22 @@ namespace EasyClinic.API.Endpoints
                             .RequireAuthorization();
 
             group.MapGet("/", GetAll);
-            group.MapGet("/{id:int:min(1)}", GetById).WithName("GetAppointmentStatusById");
-            group.MapPost("/", Create).AddEndpointFilter<ValidationFilter<CreateAppointmentStatusDTO>>().RequireAuthorization(Policies.AdminOnly);
+            group.MapGet("/{id:int:min(1)}", GetById)
+                .WithName("GetAppointmentStatusById")                                  
+                 .WithSummary("Gets a appointmentStatus by id")
+                 .WithDescription("Returns a single appointmentStatus, or 404 if it does not exist.")
+                 .Produces<AppointmentStatusDTO>(StatusCodes.Status200OK)
+                 .ProducesProblem(StatusCodes.Status401Unauthorized)
+                 .ProducesProblem(StatusCodes.Status404NotFound);
+            group.MapPost("/", Create)
+                .WithName("CreateappointmentStatus")
+                .WithSummary("Creates a new appointmentStatus")
+                .AddEndpointFilter<ValidationFilter<CreateAppointmentStatusDTO>>()
+                .RequireAuthorization(Policies.AdminOnly)                                
+                .Produces<AppointmentStatusDTO>(StatusCodes.Status201Created)
+                .ProducesValidationProblem()
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden); 
             group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateAppointmentStatusDTO>>().RequireAuthorization(Policies.AdminOnly);
             group.MapDelete("/{id:int:min(1)}", Delete).RequireAuthorization(Policies.AdminOnly);
 

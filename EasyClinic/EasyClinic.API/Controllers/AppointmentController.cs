@@ -1,6 +1,7 @@
 ﻿using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Appointment;
+using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.API.DTOs.DoctorService;
 using EasyClinic.API.Models;
 using EasyClinic.API.Options;
@@ -24,7 +25,19 @@ namespace EasyClinic.API.Controllers
             _context = context;
             _settings = options.Value;
         }
+        /// <summary>
+        /// Retrieves all appointments.
+        /// </summary>
+        /// <param name="patientId">Optional. Returns only the appointments of this pation.</param>
+        /// <param name="doctorServiceId">Optional. Returns only the appointments of this doctor.</param>
+        /// <param name="appointmentDate">Optional. Returns only the appointments of this date.</param>
+        /// <param name="appointmentStatusId">Optional. Returns only the appointments of this status.</param>
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The list of appointments (empty if none match).</response>
+        /// <response code="401">The user is not authenticated.</response>
         [HttpGet]
+        [ProducesResponseType<IEnumerable<AppointmentDTO>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<AppointmentDTO>>> GetAll(
             [FromQuery] int? patientId,
             [FromQuery] int? doctorServiceId,
@@ -71,7 +84,18 @@ namespace EasyClinic.API.Controllers
             return Ok(appointment);
         }
 
+        /// <summary>
+        /// Retrieves a appointment by id.
+        /// </summary>
+        /// <param name="id">The appointment id (1 or greater).</param>
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The appointment was found.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="404">No appointment exists with this id.</response>
         [HttpGet("{id:int:min(1)}")]
+        [ProducesResponseType<AppointmentDTO>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<AppointmentDTO>> GetById(int id, CancellationToken cancellationToken)
         {
             var appointment = await _context.Appointments
@@ -97,7 +121,21 @@ namespace EasyClinic.API.Controllers
             return Ok(appointment);
         }
 
+        /// <summary>
+        /// Creates a new appointment.
+        /// </summary>
+        /// <param name="dto">The appointment data.</param>
+        /// <response code="201">The appointment was created.</response>
+        /// <response code="400">Invalid data,or appointmentDate is out of range (in the future and between 9 and 21), or the (patientId,appointmentStatusId,doctorServiceId) does not exist.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="403">Only admins can create appointments.</response>
         [HttpPost]
+        [Authorize(Policy = Policies.AdminOnly)]
+        [Consumes("application/json")]
+        [ProducesResponseType<AppointmentDTO>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<AppointmentDTO>> Create(CreateAppointmentDTO dto)
         {
             //if (dto.AppointmentDate < DateTimeOffset.Now)

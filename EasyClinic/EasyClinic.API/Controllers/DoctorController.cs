@@ -6,12 +6,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using System.ComponentModel;
+using System.Security;
 using System.Threading.Tasks;
 
 namespace EasyClinic.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/[controller]")]    
+    [Tags("Doctors")]
     [Authorize]
     public class DoctorController : ControllerBase
     {
@@ -21,7 +24,19 @@ namespace EasyClinic.API.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// Retrieves all doctors.
+        /// </summary>
+        /// <param name="specializationId">Optional. Returns only the doctors of this specialization.</param>
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The list of doctors (empty if none match).</response>
+        /// <response code="401">The user is not authenticated.</response>
         [HttpGet]
+        [ProducesResponseType<IEnumerable<DoctorDTO>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]        
+        //[EndpointName("GetDoctors")]
+        //[EndpointSummary("Retrieves all Doctors")] // relate with OpenAPI way
+        //[EndpointDescription("Retrieves all Doctors owned or accessible by the user and Filtering by specializationId.")]
         public async Task<ActionResult<IEnumerable<DoctorDTO>>> GetAll(
             [FromQuery] int? specializationId,CancellationToken cancellationToken)
         {
@@ -46,7 +61,21 @@ namespace EasyClinic.API.Controllers
             return Ok(doctor);
         }
 
+        /// <summary>
+        /// Retrieves a doctor by id.
+        /// </summary>
+        /// <param name="id">The doctor id (1 or greater).</param>
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The doctor was found.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="404">No doctor exists with this id.</response>
         [HttpGet("{id:int:min(1)}")]
+        [ProducesResponseType<DoctorDTO>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+        //[EndpointName("GetDoctor")]
+        //[EndpointSummary("Retrieves Doctor by Id")] // relate with OpenAPI way
+        //[EndpointDescription("Retrieves specefic Doctor by id owned or accessible by the user.")]        
         public async Task<ActionResult<DoctorDTO>> GetById(int id, CancellationToken cancellationToken)
         {
             var doctor = await _context.Doctors
@@ -67,9 +96,24 @@ namespace EasyClinic.API.Controllers
 
             return Ok(doctor);
         }
-
+        /// <summary>
+        /// Creates a new doctor.
+        /// </summary>
+        /// <param name="dto">The doctor data.</param>
+        /// <response code="201">The doctor was created.</response>
+        /// <response code="400">Invalid data, or the specialization does not exist.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="403">Only admins can create doctors.</response>
         [HttpPost]
-        [Authorize(Policy = Policies.AdminOnly)]
+        [Authorize(Policy = Policies.AdminOnly)]        
+        [Consumes("application/json")]
+        [ProducesResponseType<DoctorDTO>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+        //[EndpointName("CreateDoctor")]
+        //[EndpointSummary("Creates a new doctor")] // relate with OpenAPI way
+        //[EndpointDescription("Creates a new doctor for the current user and returns the created result.")]
         public async Task<ActionResult<DoctorDTO>> Create(CreateDoctorDTO dto)
         {
             var specializationExist = await _context.Specializations

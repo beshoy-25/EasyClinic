@@ -1,5 +1,6 @@
 ﻿using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
+using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.API.DTOs.MedicalService;
 using EasyClinic.API.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,15 @@ namespace EasyClinic.API.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// Retrieves all MedicalServices.
+        /// </summary>        
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The list of Medical Services (empty if none match).</response>
+        /// <response code="401">The user is not authenticated.</response>
         [HttpGet]
+        [ProducesResponseType<IEnumerable<MedicalServiceDTO>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<MedicalServiceDTO>>> GetAll(CancellationToken cancellationToken)
         {
             var medicalService = await _context.MedicalServices
@@ -34,7 +43,18 @@ namespace EasyClinic.API.Controllers
                 }).ToListAsync(cancellationToken);
             return Ok(medicalService);
         }
+        /// <summary>
+        /// Retrieves a Medical Service by id.
+        /// </summary>
+        /// <param name="id">The Medical Service id (1 or greater).</param>
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The Medical Service was found.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="404">No Medical Service exists with this id.</response>
         [HttpGet("{id:int:min(1)}")]
+        [ProducesResponseType<MedicalServiceDTO>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<MedicalServiceDTO>> GetById(int id, CancellationToken cancellationToken)
         {
             var medicalService = await _context.MedicalServices
@@ -53,8 +73,21 @@ namespace EasyClinic.API.Controllers
 
             return Ok(medicalService);
         }
+        /// <summary>
+        /// Creates a new Medical Service.
+        /// </summary>
+        /// <param name="dto">The Medical Service data.</param>
+        /// <response code="201">The Medical Service was created.</response>
+        /// <response code="400">Invalid data.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="403">Only admins can create MedicalServices.</response>
         [HttpPost]
         [Authorize(Policy = Policies.AdminOnly)]
+        [Consumes("application/json")]
+        [ProducesResponseType<MedicalServiceDTO>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<MedicalServiceDTO>> Create(CreateMedicalServiceDTO dto)
         {
             var medicalService = new MedicalService

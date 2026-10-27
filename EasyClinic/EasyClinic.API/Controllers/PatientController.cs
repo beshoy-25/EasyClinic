@@ -1,5 +1,6 @@
 ﻿using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
+using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.API.DTOs.Patient;
 using EasyClinic.API.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,15 @@ namespace EasyClinic.API.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// Retrieves all Patient.
+        /// </summary>        
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The list of Patients (empty if none match).</response>
+        /// <response code="401">The user is not authenticated.</response>
         [HttpGet]
+        [ProducesResponseType<IEnumerable<PatientDto>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<PatientDto>>> GetAll(CancellationToken cancellationToken)
         {            
             var patient = await _context.Patients.Select(a => new PatientDto
@@ -36,8 +45,19 @@ namespace EasyClinic.API.Controllers
 
             return Ok(patient);
         }
-        
+
+        /// <summary>
+        /// Retrieves a Patient by id.
+        /// </summary>
+        /// <param name="id">The Patient id (1 or greater).</param>
+        /// <param name="cancellationToken">Cancels the query if the client disconnects.</param>
+        /// <response code="200">The Patient was found.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="404">No Patient exists with this id.</response>
         [HttpGet("{id:int:min(1)}")]
+        [ProducesResponseType<PatientDto>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<PatientDto>> GetById(int id, CancellationToken cancellationToken)
         {            
             var patient = await _context.Patients
@@ -59,8 +79,21 @@ namespace EasyClinic.API.Controllers
 
             return Ok(patient);
         }
-        
-        [HttpPost]
+
+        /// <summary>
+        /// Creates a new Patient.
+        /// </summary>
+        /// <param name="dto">The Patient data.</param>
+        /// <response code="201">The Patient was created.</response>
+        /// <response code="400">Invalid data.</response>
+        /// <response code="401">The user is not authenticated.</response>
+        /// <response code="403">Only admins can create Patients.</response>
+        [HttpPost]        
+        [Consumes("application/json")]
+        [ProducesResponseType<PatientDto>(StatusCodes.Status201Created)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<PatientDto>> Create(CreatePatientDTO dto)
         {
             if(!Enum.TryParse<Gender>(dto.Gender,out var result))

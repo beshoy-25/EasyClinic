@@ -17,8 +17,22 @@ namespace EasyClinic.API.Endpoints
                             .RequireAuthorization();
 
             group.MapGet("/", GetAll);
-            group.MapGet("/{id:int:min(1)}", GetById);
-            group.MapPost("/", Create).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>().RequireAuthorization(Policies.AdminOnly);
+            group.MapGet("/{id:int:min(1)}", GetById)
+                  .WithName("GetSpecializationById")
+                 .WithSummary("Gets a specialization by id")
+                 .WithDescription("Returns a single specialization, or 404 if it does not exist.")
+                 .Produces<SpecializationDTO>(StatusCodes.Status200OK)
+                 .ProducesProblem(StatusCodes.Status401Unauthorized)
+                 .ProducesProblem(StatusCodes.Status404NotFound);
+            group.MapPost("/", Create).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>().RequireAuthorization(Policies.AdminOnly)
+                .AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>()
+                .RequireAuthorization(Policies.AdminOnly)
+                .WithName("CreateSpecialization")
+                .WithSummary("Creates a new specialization")
+                .Produces<SpecializationDTO>(StatusCodes.Status201Created)
+                .ProducesValidationProblem()
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
             group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>().RequireAuthorization(Policies.AdminOnly);
             group.MapDelete("/{id:int:min(1)}", Delete).RequireAuthorization(Policies.AdminOnly);
 
