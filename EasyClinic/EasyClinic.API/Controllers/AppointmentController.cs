@@ -3,7 +3,7 @@ using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Appointment;
 using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.API.DTOs.DoctorService;
-using EasyClinic.API.Models;
+using EasyClinic.Domain.Entities;
 using EasyClinic.API.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

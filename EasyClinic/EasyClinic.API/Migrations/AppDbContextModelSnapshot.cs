@@ -22,7 +22,7 @@ namespace EasyClinic.API.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("EasyClinic.API.Models.Appointment", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Appointment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -57,10 +57,10 @@ namespace EasyClinic.API.Migrations
 
                     b.HasIndex("PatientId");
 
-                    b.ToTable("Appointments");
+                    b.ToTable("Appointments", (string)null);
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.AppointmentStatus", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.AppointmentStatus", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -78,10 +78,10 @@ namespace EasyClinic.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AppointmentStatuses");
+                    b.ToTable("AppointmentStatuses", (string)null);
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.Doctor", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Doctor", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -107,10 +107,10 @@ namespace EasyClinic.API.Migrations
 
                     b.HasIndex("SpecializationId");
 
-                    b.ToTable("Doctors");
+                    b.ToTable("Doctors", (string)null);
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.DoctorService", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.DoctorService", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -131,10 +131,10 @@ namespace EasyClinic.API.Migrations
                     b.HasIndex("DoctorId", "MedicalServiceId")
                         .IsUnique();
 
-                    b.ToTable("DoctorServices");
+                    b.ToTable("DoctorServices", (string)null);
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.MedicalService", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.MedicalService", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -159,10 +159,10 @@ namespace EasyClinic.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MedicalServices");
+                    b.ToTable("MedicalServices", (string)null);
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.Patient", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Patient", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -190,10 +190,10 @@ namespace EasyClinic.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Patients");
+                    b.ToTable("Patients", (string)null);
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.Specialization", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Specialization", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -207,24 +207,24 @@ namespace EasyClinic.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Specializations");
+                    b.ToTable("Specializations", (string)null);
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.Appointment", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Appointment", b =>
                 {
-                    b.HasOne("EasyClinic.API.Models.AppointmentStatus", "AppointmentStatus")
+                    b.HasOne("EasyClinic.Domain.Entities.AppointmentStatus", "AppointmentStatus")
                         .WithMany()
                         .HasForeignKey("AppointmentStatusId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EasyClinic.API.Models.DoctorService", "DoctorService")
+                    b.HasOne("EasyClinic.Domain.Entities.DoctorService", "DoctorService")
                         .WithMany()
                         .HasForeignKey("DoctorServiceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EasyClinic.API.Models.Patient", "Patient")
+                    b.HasOne("EasyClinic.Domain.Entities.Patient", "Patient")
                         .WithMany()
                         .HasForeignKey("PatientId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -237,9 +237,9 @@ namespace EasyClinic.API.Migrations
                     b.Navigation("Patient");
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.Doctor", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Doctor", b =>
                 {
-                    b.HasOne("EasyClinic.API.Models.Specialization", "Specialization")
+                    b.HasOne("EasyClinic.Domain.Entities.Specialization", "Specialization")
                         .WithMany("Doctors")
                         .HasForeignKey("SpecializationId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -248,15 +248,15 @@ namespace EasyClinic.API.Migrations
                     b.Navigation("Specialization");
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.DoctorService", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.DoctorService", b =>
                 {
-                    b.HasOne("EasyClinic.API.Models.Doctor", "Doctor")
+                    b.HasOne("EasyClinic.Domain.Entities.Doctor", "Doctor")
                         .WithMany("DoctorServices")
                         .HasForeignKey("DoctorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EasyClinic.API.Models.MedicalService", "MedicalService")
+                    b.HasOne("EasyClinic.Domain.Entities.MedicalService", "MedicalService")
                         .WithMany("DoctorServices")
                         .HasForeignKey("MedicalServiceId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -267,17 +267,17 @@ namespace EasyClinic.API.Migrations
                     b.Navigation("MedicalService");
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.Doctor", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Doctor", b =>
                 {
                     b.Navigation("DoctorServices");
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.MedicalService", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.MedicalService", b =>
                 {
                     b.Navigation("DoctorServices");
                 });
 
-            modelBuilder.Entity("EasyClinic.API.Models.Specialization", b =>
+            modelBuilder.Entity("EasyClinic.Domain.Entities.Specialization", b =>
                 {
                     b.Navigation("Doctors");
                 });

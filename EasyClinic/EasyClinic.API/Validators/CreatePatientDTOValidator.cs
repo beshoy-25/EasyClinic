@@ -1,5 +1,5 @@
 ﻿using EasyClinic.API.DTOs.Patient;
-using EasyClinic.API.Models;
+using EasyClinic.Domain.Entities;
 using FluentValidation;
 
 namespace EasyClinic.API.Validators

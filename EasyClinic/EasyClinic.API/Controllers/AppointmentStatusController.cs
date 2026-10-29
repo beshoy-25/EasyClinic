@@ -1,6 +1,6 @@
 ﻿//using EasyClinic.API.Data;
 //using EasyClinic.API.DTOs.AppointmentStatus;
-//using EasyClinic.API.Models;
+//using EasyClinic.Domain.Entities;
 //using Microsoft.AspNetCore.Mvc;
 //using Microsoft.EntityFrameworkCore;
 

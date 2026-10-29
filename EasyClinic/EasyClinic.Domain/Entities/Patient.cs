@@ -1,4 +1,4 @@
-﻿namespace EasyClinic.API.Models
+﻿namespace EasyClinic.Domain.Entities
 {
     public enum Gender
     {

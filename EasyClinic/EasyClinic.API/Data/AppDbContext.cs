@@ -1,4 +1,4 @@
-﻿using EasyClinic.API.Models;
+﻿using EasyClinic.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 namespace EasyClinic.API.Data
 {

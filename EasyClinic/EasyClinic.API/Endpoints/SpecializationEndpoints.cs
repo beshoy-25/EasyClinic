@@ -2,7 +2,7 @@
 using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Specializations;
-using EasyClinic.API.Models;
+using EasyClinic.Domain.Entities;
 using M04.MinimalFluentValidation.Filters;
 using Microsoft.EntityFrameworkCore;
 

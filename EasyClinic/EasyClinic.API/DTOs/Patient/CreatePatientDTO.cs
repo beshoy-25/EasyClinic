@@ -1,4 +1,4 @@
-﻿using EasyClinic.API.Models;
+﻿using EasyClinic.Domain.Entities;
 
 namespace EasyClinic.API.DTOs.Patient
 {
