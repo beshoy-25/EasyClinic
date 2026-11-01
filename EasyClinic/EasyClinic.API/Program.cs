@@ -138,6 +138,8 @@ namespace EasyClinic.API
                           .WithHeaders("Authorization", "Content-Type"));
             });
 
+            builder.Services.AddSingleton(TimeProvider.System);
+
             var app = builder.Build();
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();   // ← لازم يكون من أول حاجة في الـ Pipeline

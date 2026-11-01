@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using EasyClinic.API.Extensions;
+using EasyClinic.Domain.Abstractions;
+using EasyClinic.Domain.Errors;
 
 namespace EasyClinic.API.Controllers
 {
@@ -19,12 +22,20 @@ namespace EasyClinic.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly ClinicSettings _settings;
+        private readonly TimeProvider _timeProvider;
 
-        public AppointmentController(AppDbContext context, IOptions<ClinicSettings> options)
+        public AppointmentController(
+            AppDbContext context,
+            IOptions<ClinicSettings> options,
+            TimeProvider timeProvider)
         {
             _context = context;
             _settings = options.Value;
+            _timeProvider = timeProvider;
         }
+        private ObjectResult ProblemFrom(Error error) =>
+                Problem(statusCode: error.Type.ToStatusCode(), title: error.Code, detail: error.Description);
+
         /// <summary>
         /// Retrieves all appointments.
         /// </summary>
@@ -126,60 +137,28 @@ namespace EasyClinic.API.Controllers
         /// </summary>
         /// <param name="dto">The appointment data.</param>
         /// <response code="201">The appointment was created.</response>
-        /// <response code="400">Invalid data,or appointmentDate is out of range (in the future and between 9 and 21), or the (patientId,appointmentStatusId,doctorServiceId) does not exist.</response>
+        /// <response code="400">Invalid data: a date in the past, outside working hours, or an id that does not exist.</response>
         /// <response code="401">The user is not authenticated.</response>
-        /// <response code="403">Only admins can create appointments.</response>
+        /// <response code="403">The user does not have permission to create appointments.</response>
+        /// <response code="409">The maximum number of appointments for that day has been reached.</response>
         [HttpPost]
-        [Authorize(Policy = Policies.AdminOnly)]
+        [Authorize(Policy = Policies.StaffOnly)]
         [Consumes("application/json")]
         [ProducesResponseType<AppointmentDTO>(StatusCodes.Status201Created)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<AppointmentDTO>> Create(CreateAppointmentDTO dto)
-        {
-            //if (dto.AppointmentDate < DateTimeOffset.Now)
-            //    return Problem(
-            //         detail: $"Appointments must be in the future.",
-            //         statusCode: StatusCodes.Status400BadRequest,
-            //         title: "Invalid Appointment Date"
-            //     );
-
-            //var hour = dto.AppointmentDate.Hour;
-            //if (hour < _settings.OpeningHour || hour >= _settings.ClosingHour)
-            //    return Problem(
-            //        detail: $"Appointments must be between {_settings.OpeningHour}:00 and {_settings.ClosingHour}:00.",
-            //        statusCode: StatusCodes.Status400BadRequest,
-            //        title: "Invalid Appointment Time"
-            //    );
-
-            if (_context.Appointments.Any(a => a.AppointmentDate == dto.AppointmentDate))
-                return Problem(
-                    detail: "We are very sorry, This appoint was booked . please book another appoint.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Booking"); 
-
-            var AppointmentsPerDay = await _context.Appointments.CountAsync(a => a.AppointmentDate.Date ==  dto.AppointmentDate.Date);
-            if (AppointmentsPerDay >= _settings.MaxAppointmentsPerDay)
-                return Problem(
-                  detail: $"We are very sorry, we have reached the maximum appointments per day. please book another day.",
-                  statusCode: StatusCodes.Status400BadRequest,
-                  title: "Invalid Booking"); 
-            
+        {            
             var patientExist = await _context.Patients.AnyAsync(p => p.Id == dto.PatientId);
             if (!patientExist)
-                return Problem(
-                    detail: $"Patient with id {dto.PatientId} does not exist.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Ptient"); 
+                return ProblemFrom(AppointmentErrors.PatientNotFound(dto.PatientId));
 
             var appointmentStatusExist = await _context.AppointmentStatuses.AnyAsync(d => d.Id == dto.AppointmentStatusId);
             if (!appointmentStatusExist)
-                return Problem(
-                    detail: $"AppointmentStatus with id {dto.AppointmentStatusId} does not exist.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Booking"); 
-            
+                return ProblemFrom(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId));
+
             // جوه الـ DoctorService، هنوصل لـ MedicalService.Price
             var doctorService = await _context.DoctorServices
                 .Include(ds => ds.MedicalService)
@@ -187,38 +166,45 @@ namespace EasyClinic.API.Controllers
                 .FirstOrDefaultAsync(ds => ds.Id == dto.DoctorServiceId);
 
             if (doctorService is null)
-                return Problem(
-                    detail: $"DoctorService with id {dto.DoctorServiceId} does not exist.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Booking"); 
+                return ProblemFrom(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId));
 
-            decimal totalPrice = doctorService.MedicalService.Price;   // السيرفر بيحسبها بنفسه
+            // 2) قواعد الحجز نفسها (من غير Database) جوه الـ Entity
+            var result = Appointment.Create(
+                patientId: dto.PatientId,
+                doctorServiceId: dto.DoctorServiceId,
+                appointmentStatusId: dto.AppointmentStatusId,
+                appointmentDate: dto.AppointmentDate,
+                servicePrice: doctorService.MedicalService.Price,
+                notes: dto.Notes,
+                now: _timeProvider.GetUtcNow(),
+                openingHour: _settings.OpeningHour,
+                closingHour: _settings.ClosingHour);
 
-            var appointment = new Appointment
-            {
-                AppointmentStatusId = dto.AppointmentStatusId,
-                DoctorServiceId = dto.DoctorServiceId,
-                PatientId= dto.PatientId,
-                AppointmentDate = dto.AppointmentDate,
-                Notes = dto.Notes  ,
-                TotalPrice = totalPrice
-            };
+            if (result.IsFailure)
+                return ProblemFrom(result.Error);
+
+            var appointment = result.Value;
+
+            var appointmentsPerDay = await _context.Appointments
+                    .CountAsync(a => a.AppointmentDate.Date == dto.AppointmentDate.Date);
+
+            if (appointmentsPerDay >= _settings.MaxAppointmentsPerDay)
+                return ProblemFrom(AppointmentErrors.DailyLimitReached);
 
             _context.Appointments.Add(appointment);
             await _context.SaveChangesAsync();
 
             var appointmentStatus = await _context.AppointmentStatuses.FindAsync(dto.AppointmentStatusId);
-            //var findDoctorService = await _context.DoctorServices.FindAsync(dto.DoctorServiceId);
             var patient = await _context.Patients.FindAsync(dto.PatientId);
 
             var resultDto = new AppointmentDTO
             {
-                Id = appointment.Id,               
+                Id = appointment.Id,
                 AppointmentStatusId = appointment.AppointmentStatusId,
                 AppointmentStatusName = appointmentStatus!.Name,
                 DoctorServiceId = appointment.DoctorServiceId,
-                DoctorName = doctorService!.Doctor.FullName,               
-                MedicalServiceName = doctorService!.MedicalService.Name,
+                DoctorName = doctorService.Doctor.FullName,
+                MedicalServiceName = doctorService.MedicalService.Name,
                 PatientId = appointment.PatientId,
                 PatientName = patient!.Name,
                 AppointmentDate = appointment.AppointmentDate,
