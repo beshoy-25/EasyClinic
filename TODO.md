@@ -10,6 +10,9 @@
 - [ ] Clinic time zone for working-hours check
 - [ ] Validators for PATCH DTOs
 - [ ] Double-booking rule per doctor.
+- [ ] Double-booking rule per doctor
+- [ ] Daily limit check when rescheduling via PUT/PATCH
+
 ## Course modules skipped (return after Clean Architecture)
 - [ ] Module 21: Performance (Rate Limiting on /login first, then caching)
 - [ ] Module 22: Docker

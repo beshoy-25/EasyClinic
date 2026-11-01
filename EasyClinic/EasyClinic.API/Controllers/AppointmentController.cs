@@ -219,48 +219,40 @@ namespace EasyClinic.API.Controllers
         public async Task<IActionResult> Update(int id, CreateAppointmentDTO dto)
         {
             var appointment = await _context.Appointments.FindAsync(id);
-
             if (appointment is null)
                 return NotFound();
 
-            var patientExists = await _context.Patients.AnyAsync(p => p.Id == dto.PatientId);
-            if (!patientExists)
-                return Problem(
-                    detail: $"Patient with id {dto.PatientId} does not exist.", 
-                    statusCode: StatusCodes.Status400BadRequest, 
-                    title: "Invalid Patient");
+            if (!await _context.Patients.AnyAsync(p => p.Id == dto.PatientId))
+                return ProblemFrom(AppointmentErrors.PatientNotFound(dto.PatientId));
 
-            var appointmentStatusExists = await _context.AppointmentStatuses.AnyAsync(s => s.Id == dto.AppointmentStatusId);
-            if (!appointmentStatusExists)
-                return Problem(
-                    detail: $"AppointmentStatus with id {dto.AppointmentStatusId} does not exist.", 
-                    statusCode: StatusCodes.Status400BadRequest, 
-                    title: "Invalid AppointmentStatus");
+            if (!await _context.AppointmentStatuses.AnyAsync(s => s.Id == dto.AppointmentStatusId))
+                return ProblemFrom(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId));
 
             var doctorService = await _context.DoctorServices
                 .Include(ds => ds.MedicalService)
                 .FirstOrDefaultAsync(ds => ds.Id == dto.DoctorServiceId);
-
             if (doctorService is null)
-                return Problem(
-                    detail: $"DoctorService with id {dto.DoctorServiceId} does not exist.",
-                    statusCode: StatusCodes.Status400BadRequest, 
-                    title: "Invalid DoctorService");
+                return ProblemFrom(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId));
 
-            // نحسب السعر الجديد بس لو الـ DoctorService اتغيّر فعلاً
-            if (appointment.DoctorServiceId != dto.DoctorServiceId)
+            // ليه الشرط ده؟ جاوب في آخر الرد
+            if (dto.AppointmentDate != appointment.AppointmentDate)
             {
-                appointment.TotalPrice = doctorService.MedicalService.Price;
+                var rescheduled = appointment.Reschedule(
+                    dto.AppointmentDate, _timeProvider.GetUtcNow(),
+                    _settings.OpeningHour, _settings.ClosingHour);
+
+                if (rescheduled.IsFailure)
+                    return ProblemFrom(rescheduled.Error);
             }
 
-            appointment.PatientId = dto.PatientId;
-            appointment.DoctorServiceId = dto.DoctorServiceId;
-            appointment.AppointmentStatusId = dto.AppointmentStatusId;
-            appointment.AppointmentDate = dto.AppointmentDate;
-            appointment.Notes = dto.Notes;
+            if (dto.DoctorServiceId != appointment.DoctorServiceId)
+                appointment.ChangeDoctorService(dto.DoctorServiceId, doctorService.MedicalService.Price);
+
+            appointment.ChangePatient(dto.PatientId);
+            appointment.ChangeStatus(dto.AppointmentStatusId);
+            appointment.UpdateNotes(dto.Notes);
 
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
@@ -269,62 +261,51 @@ namespace EasyClinic.API.Controllers
         public async Task<IActionResult> Patch(int id, PatchAppointmentDTO dto)
         {
             var appointment = await _context.Appointments.FindAsync(id);
-
             if (appointment is null)
                 return NotFound();
 
             if (dto.PatientId.HasValue)
             {
-                var patientExists = await _context.Patients.AnyAsync(p => p.Id == dto.PatientId.Value);
-                if (!patientExists)
-                    return Problem(
-                        detail: $"Patient with id {dto.PatientId} does not exist.",
-                        statusCode: StatusCodes.Status400BadRequest,
-                        title: "Invalid Patient");
+                if (!await _context.Patients.AnyAsync(p => p.Id == dto.PatientId.Value))
+                    return ProblemFrom(AppointmentErrors.PatientNotFound(dto.PatientId.Value));
 
-                appointment.PatientId = dto.PatientId.Value;
+                appointment.ChangePatient(dto.PatientId.Value);
             }
 
             if (dto.AppointmentStatusId.HasValue)
             {
-                var statusExists = await _context.AppointmentStatuses.AnyAsync(s => s.Id == dto.AppointmentStatusId.Value);
-                if (!statusExists)
-                    return Problem(
-                        detail: $"AppointmentStatus with id {dto.AppointmentStatusId} does not exist.",
-                        statusCode: StatusCodes.Status400BadRequest,
-                        title: "Invalid AppointmentStatus");
+                if (!await _context.AppointmentStatuses.AnyAsync(s => s.Id == dto.AppointmentStatusId.Value))
+                    return ProblemFrom(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId.Value));
 
-                appointment.AppointmentStatusId = dto.AppointmentStatusId.Value;
+                appointment.ChangeStatus(dto.AppointmentStatusId.Value);
             }
 
-            if (dto.DoctorServiceId.HasValue)
+            if (dto.DoctorServiceId.HasValue && dto.DoctorServiceId.Value != appointment.DoctorServiceId)
             {
                 var doctorService = await _context.DoctorServices
                     .Include(ds => ds.MedicalService)
                     .FirstOrDefaultAsync(ds => ds.Id == dto.DoctorServiceId.Value);
 
                 if (doctorService is null)
-                    return Problem(
-                        detail: $"DoctorService with id {dto.DoctorServiceId} does not exist.",
-                        statusCode: StatusCodes.Status400BadRequest,
-                        title: "Invalid DoctorService");
+                    return ProblemFrom(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId.Value));
 
-                appointment.DoctorServiceId = dto.DoctorServiceId.Value;
-                appointment.TotalPrice = doctorService.MedicalService.Price;   // فتكر: بس لو الخدمة اتغيرت فعلاً
+                appointment.ChangeDoctorService(doctorService.Id, doctorService.MedicalService.Price);
             }
 
-            if (dto.AppointmentDate.HasValue)
+            if (dto.AppointmentDate.HasValue && dto.AppointmentDate.Value != appointment.AppointmentDate)
             {
-                appointment.AppointmentDate = dto.AppointmentDate.Value;
+                var rescheduled = appointment.Reschedule(
+                    dto.AppointmentDate.Value, _timeProvider.GetUtcNow(),
+                    _settings.OpeningHour, _settings.ClosingHour);
+
+                if (rescheduled.IsFailure)
+                    return ProblemFrom(rescheduled.Error);
             }
 
             if (dto.Notes is not null)
-            {
-                appointment.Notes = dto.Notes;
-            }
+                appointment.UpdateNotes(dto.Notes);
 
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
