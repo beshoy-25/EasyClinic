@@ -12,6 +12,8 @@
 - [ ] Double-booking rule per doctor.
 - [ ] Double-booking rule per doctor
 - [ ] Daily limit check when rescheduling via PUT/PATCH
+- [ ] Dispatch domain events after SaveChanges (Infrastructure)
+- [ ] Make the other 6 entities inherit Entity
 
 ## Course modules skipped (return after Clean Architecture)
 - [ ] Module 21: Performance (Rate Limiting on /login first, then caching)

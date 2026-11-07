@@ -1,12 +1,14 @@
 ﻿using EasyClinic.Domain.Abstractions;
 using EasyClinic.Domain.Errors;
+using EasyClinic.Domain.Events;
 
 namespace EasyClinic.Domain.Entities
 {
-    public class Appointment
+    public class Appointment : Entity
     {
-        
-        public int Id { get; private set; }
+
+        // شيل السطر ده، الـ Id بقى في Entity:
+        // public int Id { get; private set; }
         public int PatientId { get; private set; }
         public Patient Patient { get; private set; } = null!;
         public int DoctorServiceId { get; private set; }
@@ -32,7 +34,7 @@ namespace EasyClinic.Domain.Entities
             if (schedule.IsFailure)
                 return Result.Failure<Appointment>(schedule.Error);
 
-            return Result.Success(new Appointment
+            var appointment = new Appointment
             {
                 PatientId = patientId,
                 DoctorServiceId = doctorServiceId,
@@ -40,7 +42,11 @@ namespace EasyClinic.Domain.Entities
                 AppointmentDate = appointmentDate,
                 TotalPrice = servicePrice,
                 Notes = notes
-            });
+            };
+
+            appointment.RaiseDomainEvent(new AppointmentCreatedEvent(appointment));
+
+            return Result.Success(appointment);
         }
         public Result Reschedule(DateTimeOffset newDate, DateTimeOffset now, int openingHour, int closingHour)
         {
@@ -49,6 +55,10 @@ namespace EasyClinic.Domain.Entities
                 return schedule;
 
             AppointmentDate = newDate;
+
+            var oldDate = AppointmentDate;
+            AppointmentDate = newDate;
+            RaiseDomainEvent(new AppointmentRescheduledEvent(this, oldDate));
             return Result.Success();
         }
 
@@ -60,7 +70,15 @@ namespace EasyClinic.Domain.Entities
         }
 
         public void ChangePatient(int patientId) => PatientId = patientId;
-        public void ChangeStatus(int statusId) => AppointmentStatusId = statusId;
+        public void ChangeStatus(int newStatusId)
+        {
+            if (newStatusId == AppointmentStatusId)
+                return;
+
+            var oldStatusId = AppointmentStatusId;
+            AppointmentStatusId = newStatusId;
+            RaiseDomainEvent(new AppointmentStatusChangedEvent(this, oldStatusId));
+        }
         public void UpdateNotes(string? notes) => Notes = notes;
 
         private static Result ValidateSchedule(DateTimeOffset date, DateTimeOffset now, int openingHour, int closingHour)
