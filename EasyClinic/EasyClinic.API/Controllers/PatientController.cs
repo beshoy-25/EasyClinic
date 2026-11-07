@@ -2,11 +2,14 @@
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.API.DTOs.Patient;
+using EasyClinic.API.Extensions;
 using EasyClinic.Domain.Entities;
+using EasyClinic.Domain.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using System.Reflection;
 
 namespace EasyClinic.API.Controllers
 {
@@ -16,9 +19,11 @@ namespace EasyClinic.API.Controllers
     public class PatientController : ControllerBase
     {
         private readonly AppDbContext _context;
-        public PatientController(AppDbContext context)
+        private readonly TimeProvider _timeProvider;        
+        public PatientController(AppDbContext context, TimeProvider timeProvider)
         {
             _context = context;
+            _timeProvider = timeProvider;
         }
 
         /// <summary>
@@ -74,7 +79,7 @@ namespace EasyClinic.API.Controllers
 
             if(patient is null)
             {
-                return NotFound();
+                return this.ToProblem(PatientErrors.NotFound(id));
             }
 
             return Ok(patient);
@@ -96,19 +101,18 @@ namespace EasyClinic.API.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<PatientDto>> Create(CreatePatientDTO dto)
         {
-            if(!Enum.TryParse<Gender>(dto.Gender,out var result))
+            if(!Enum.TryParse<Gender>(dto.Gender,out var gender))
             {
                 return Problem(detail: "Invalid gender value. Must be 'Male' or 'Femal'.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid value");
             }
+            var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
 
-            var patient = new Patient
-            {
-                Name = dto.Name,
-                DateOfBirth = dto.DateOfBirth,
-                Gender = result,
-                MedicalHistory = dto.MedicalHistory,
-                PhoneNumber = dto.PhoneNumber
-            };
+            var result = Patient.Create(dto.Name, dto.DateOfBirth, gender, dto.PhoneNumber, dto.MedicalHistory, today);
+
+            if (result.IsFailure)
+                return this.ToProblem(result.Error);
+
+            var patient = result.Value;           
 
             _context.Patients.Add(patient);
             await _context.SaveChangesAsync();
@@ -133,18 +137,18 @@ namespace EasyClinic.API.Controllers
             var patient = await _context.Patients.FindAsync(id);
 
             if (patient is null)
-                return NotFound();
+                return this.ToProblem(PatientErrors.NotFound(id));
 
-            if (!Enum.TryParse<Gender>(dto.Gender, out var result))
-            {
-                return Problem(detail: "Invalid gender value. Must be 'Male' or 'Femal'.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid value");
+            if (!Enum.TryParse<Gender>(dto.Gender, out var gender))
+            {                
+                return Problem(detail: "Invalid gender value. Must be 'Male' or 'Femal'.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid value");                
             }
-            // عدّل كل الخصائص من الـ dto
-            patient.Name = dto.Name;
-            patient.DateOfBirth = dto.DateOfBirth;
-            patient.Gender = result;
-            patient.MedicalHistory = dto.MedicalHistory;
-            patient.PhoneNumber = dto.PhoneNumber;
+            var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
+
+            var result = patient.Update(dto.Name, dto.DateOfBirth, gender, dto.PhoneNumber, dto.MedicalHistory, today);
+
+            if (result.IsFailure)
+                return this.ToProblem(result.Error);                     
 
 
             await _context.SaveChangesAsync();
@@ -159,11 +163,13 @@ namespace EasyClinic.API.Controllers
             var patient = await _context.Patients.FindAsync(id);
 
             if (patient is null)
-                return NotFound();
+                return this.ToProblem(PatientErrors.NotFound(id));
 
             var hasAppointments = await _context.Appointments.AnyAsync(a => a.PatientId == id);
-            if (hasAppointments)                
-            return Problem(detail: "Cannot delete this patient because they have appointments linked to them.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid Deleting");
+            if (hasAppointments)
+                return this.ToProblem(PatientErrors.HasAppointments);
+                //return Problem(detail: "Cannot delete this patient because they have appointments linked to them.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid Deleting");
+
             _context.Patients.Remove(patient);
             await _context.SaveChangesAsync();
 

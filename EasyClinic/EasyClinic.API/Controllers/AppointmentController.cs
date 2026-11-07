@@ -33,8 +33,8 @@ namespace EasyClinic.API.Controllers
             _settings = options.Value;
             _timeProvider = timeProvider;
         }
-        private ObjectResult ProblemFrom(Error error) =>
-                Problem(statusCode: error.Type.ToStatusCode(), title: error.Code, detail: error.Description);
+        //private ObjectResult ProblemFrom(Error error) =>
+        //        Problem(statusCode: error.Type.ToStatusCode(), title: error.Code, detail: error.Description);
 
         /// <summary>
         /// Retrieves all appointments.
@@ -153,11 +153,11 @@ namespace EasyClinic.API.Controllers
         {            
             var patientExist = await _context.Patients.AnyAsync(p => p.Id == dto.PatientId);
             if (!patientExist)
-                return ProblemFrom(AppointmentErrors.PatientNotFound(dto.PatientId));
+                return this.ToProblem(AppointmentErrors.PatientNotFound(dto.PatientId));
 
             var appointmentStatusExist = await _context.AppointmentStatuses.AnyAsync(d => d.Id == dto.AppointmentStatusId);
             if (!appointmentStatusExist)
-                return ProblemFrom(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId));
+                return this.ToProblem(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId));
 
             // جوه الـ DoctorService، هنوصل لـ MedicalService.Price
             var doctorService = await _context.DoctorServices
@@ -166,7 +166,7 @@ namespace EasyClinic.API.Controllers
                 .FirstOrDefaultAsync(ds => ds.Id == dto.DoctorServiceId);
 
             if (doctorService is null)
-                return ProblemFrom(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId));
+                return this.ToProblem(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId));
 
             // 2) قواعد الحجز نفسها (من غير Database) جوه الـ Entity
             var result = Appointment.Create(
@@ -181,7 +181,7 @@ namespace EasyClinic.API.Controllers
                 closingHour: _settings.ClosingHour);
 
             if (result.IsFailure)
-                return ProblemFrom(result.Error);
+                return this.ToProblem(result.Error);
 
             var appointment = result.Value;
 
@@ -189,7 +189,7 @@ namespace EasyClinic.API.Controllers
                     .CountAsync(a => a.AppointmentDate.Date == dto.AppointmentDate.Date);
 
             if (appointmentsPerDay >= _settings.MaxAppointmentsPerDay)
-                return ProblemFrom(AppointmentErrors.DailyLimitReached);
+                return this.ToProblem(AppointmentErrors.DailyLimitReached);
 
             _context.Appointments.Add(appointment);
             await _context.SaveChangesAsync();
@@ -223,16 +223,16 @@ namespace EasyClinic.API.Controllers
                 return NotFound();
 
             if (!await _context.Patients.AnyAsync(p => p.Id == dto.PatientId))
-                return ProblemFrom(AppointmentErrors.PatientNotFound(dto.PatientId));
+                return this.ToProblem(AppointmentErrors.PatientNotFound(dto.PatientId));
 
             if (!await _context.AppointmentStatuses.AnyAsync(s => s.Id == dto.AppointmentStatusId))
-                return ProblemFrom(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId));
+                return this.ToProblem(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId));
 
             var doctorService = await _context.DoctorServices
                 .Include(ds => ds.MedicalService)
                 .FirstOrDefaultAsync(ds => ds.Id == dto.DoctorServiceId);
             if (doctorService is null)
-                return ProblemFrom(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId));
+                return this.ToProblem(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId));
 
             // ليه الشرط ده؟ جاوب في آخر الرد
             if (dto.AppointmentDate != appointment.AppointmentDate)
@@ -242,7 +242,7 @@ namespace EasyClinic.API.Controllers
                     _settings.OpeningHour, _settings.ClosingHour);
 
                 if (rescheduled.IsFailure)
-                    return ProblemFrom(rescheduled.Error);
+                    return this.ToProblem(rescheduled.Error);
             }
 
             if (dto.DoctorServiceId != appointment.DoctorServiceId)
@@ -267,7 +267,7 @@ namespace EasyClinic.API.Controllers
             if (dto.PatientId.HasValue)
             {
                 if (!await _context.Patients.AnyAsync(p => p.Id == dto.PatientId.Value))
-                    return ProblemFrom(AppointmentErrors.PatientNotFound(dto.PatientId.Value));
+                    return this.ToProblem(AppointmentErrors.PatientNotFound(dto.PatientId.Value));
 
                 appointment.ChangePatient(dto.PatientId.Value);
             }
@@ -275,7 +275,7 @@ namespace EasyClinic.API.Controllers
             if (dto.AppointmentStatusId.HasValue)
             {
                 if (!await _context.AppointmentStatuses.AnyAsync(s => s.Id == dto.AppointmentStatusId.Value))
-                    return ProblemFrom(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId.Value));
+                    return this.ToProblem(AppointmentErrors.StatusNotFound(dto.AppointmentStatusId.Value));
 
                 appointment.ChangeStatus(dto.AppointmentStatusId.Value);
             }
@@ -287,7 +287,7 @@ namespace EasyClinic.API.Controllers
                     .FirstOrDefaultAsync(ds => ds.Id == dto.DoctorServiceId.Value);
 
                 if (doctorService is null)
-                    return ProblemFrom(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId.Value));
+                    return this.ToProblem(AppointmentErrors.DoctorServiceNotFound(dto.DoctorServiceId.Value));
 
                 appointment.ChangeDoctorService(doctorService.Id, doctorService.MedicalService.Price);
             }
@@ -299,7 +299,7 @@ namespace EasyClinic.API.Controllers
                     _settings.OpeningHour, _settings.ClosingHour);
 
                 if (rescheduled.IsFailure)
-                    return ProblemFrom(rescheduled.Error);
+                    return this.ToProblem(rescheduled.Error);
             }
 
             if (dto.Notes is not null)
