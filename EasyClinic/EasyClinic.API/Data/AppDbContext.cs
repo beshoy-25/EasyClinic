@@ -52,6 +52,23 @@ namespace EasyClinic.API.Data
                 e.Property(s => s.Name).HasMaxLength(100);
                 e.HasIndex(s => s.Name).IsUnique();
             });
+            modelBuilder.Entity<Doctor>()
+                .HasOne(d => d.Specialization)
+                .WithMany(s => s.Doctors)
+                .HasForeignKey(d => d.SpecializationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DoctorService>()
+                .HasOne(ds => ds.Doctor)
+                .WithMany(d => d.DoctorServices)
+                .HasForeignKey(ds => ds.DoctorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DoctorService>()
+                .HasOne(ds => ds.MedicalService)
+                .WithMany(m => m.DoctorServices)
+                .HasForeignKey(ds => ds.MedicalServiceId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

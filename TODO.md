@@ -5,7 +5,7 @@
 - [ ] Refresh Token
 - [ ] Data Protection
 - [ ] Repository / Unit of Work (or IAppDbContext abstraction)
-- [ ] Cascade -> Restrict on remaining FKs (Doctor->Specialization, DoctorService->*)
+- [x] Cascade -> Restrict on remaining FKs (Doctor->Specialization, DoctorService->*)
 - [ ] Soft Delete for patients and medical records
 - [ ] Clinic time zone for working-hours check
 - [ ] Validators for PATCH DTOs

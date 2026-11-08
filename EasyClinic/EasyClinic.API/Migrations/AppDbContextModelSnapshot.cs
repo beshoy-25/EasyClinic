@@ -246,7 +246,7 @@ namespace EasyClinic.API.Migrations
                     b.HasOne("EasyClinic.Domain.Entities.Specialization", "Specialization")
                         .WithMany("Doctors")
                         .HasForeignKey("SpecializationId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Specialization");
@@ -257,13 +257,13 @@ namespace EasyClinic.API.Migrations
                     b.HasOne("EasyClinic.Domain.Entities.Doctor", "Doctor")
                         .WithMany("DoctorServices")
                         .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("EasyClinic.Domain.Entities.MedicalService", "MedicalService")
                         .WithMany("DoctorServices")
                         .HasForeignKey("MedicalServiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Doctor");
