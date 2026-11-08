@@ -2,7 +2,9 @@
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.API.DTOs.DoctorService;
+using EasyClinic.API.Extensions;
 using EasyClinic.Domain.Entities;
+using EasyClinic.Domain.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -86,7 +88,7 @@ namespace EasyClinic.API.Controllers
                 }).FirstOrDefaultAsync(cancellationToken);
 
             if (doctorService is null)
-                return NotFound();
+                return this.ToProblem(DoctorServiceErrors.NotFound(id));
 
 
             return Ok(doctorService);
@@ -110,25 +112,17 @@ namespace EasyClinic.API.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<DoctorServiceDTO>> Create(CreateDoctorServiceDTO dto)
         {
-            var doctorExist = await _context.Doctors.AnyAsync(d => d.Id == dto.DoctorId);
-            if(!doctorExist)
-                return Problem(detail: $"Doctor with id {dto.DoctorId} does not exist.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid Doctor");
+            if (!await _context.Doctors.AnyAsync(d => d.Id == dto.DoctorId))
+                return this.ToProblem(DoctorServiceErrors.DoctorNotFound(dto.DoctorId));
 
-            var serviceExist = await _context.MedicalServices.AnyAsync(d => d.Id == dto.MedicalServiceId);
-            if(!serviceExist)
-                return Problem(detail: $"MedicalService with id {dto.MedicalServiceId} does not exist.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid MedicalService");
+            if (!await _context.MedicalServices.AnyAsync(m => m.Id == dto.MedicalServiceId))
+                return this.ToProblem(DoctorServiceErrors.MedicalServiceNotFound(dto.MedicalServiceId));
 
-            var alreadyExists = await _context.DoctorServices
-                .AnyAsync(ds => ds.DoctorId == dto.DoctorId && ds.MedicalServiceId == dto.MedicalServiceId);
+            if (await _context.DoctorServices.AnyAsync(ds =>
+                        ds.DoctorId == dto.DoctorId && ds.MedicalServiceId == dto.MedicalServiceId))
+                return this.ToProblem(DoctorServiceErrors.AlreadyExists);
 
-            if (alreadyExists)
-                return Problem(detail: "This doctor is already linked to this medical service.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid linking");
-
-            var doctorService = new DoctorService
-            {
-                DoctorId = dto.DoctorId,
-                MedicalServiceId = dto.MedicalServiceId
-            };
+            var doctorService = DoctorService.Create(dto.DoctorId, dto.MedicalServiceId);
 
             _context.DoctorServices.Add(doctorService);
             await _context.SaveChangesAsync();
@@ -155,26 +149,26 @@ namespace EasyClinic.API.Controllers
             var doctorService = await _context.DoctorServices.FindAsync(id);
 
             if (doctorService is null)
-                return NotFound();
+                return this.ToProblem(DoctorServiceErrors.NotFound(id));
+            
+            var changesLink = dto.DoctorId != doctorService.DoctorId
+                           || dto.MedicalServiceId != doctorService.MedicalServiceId;
 
-            var doctorExists = await _context.Doctors.AnyAsync(d => d.Id == dto.DoctorId);
-            if (!doctorExists)
-                return Problem(detail: $"Doctor with id {dto.DoctorId} does not exist.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid Doctor");
+            if (changesLink && await _context.Appointments.AnyAsync(a => a.DoctorServiceId == id))
+                return this.ToProblem(DoctorServiceErrors.HasAppointments);
 
-            var serviceExists = await _context.MedicalServices.AnyAsync(m => m.Id == dto.MedicalServiceId);
-            if (!serviceExists)
-                return Problem(detail: $"MedicalService with id {dto.MedicalServiceId} does not exist.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid MedicalService");
+            if (!await _context.Doctors.AnyAsync(d => d.Id == dto.DoctorId))
+                return this.ToProblem(DoctorServiceErrors.DoctorNotFound(dto.DoctorId));
 
-            var duplicateExists = await _context.DoctorServices
-                .AnyAsync(ds => ds.Id != id && ds.DoctorId == dto.DoctorId && ds.MedicalServiceId == dto.MedicalServiceId);
-            if (duplicateExists)
-                return Problem(detail: "This doctor is already linked to this medical service.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid linking");
+            if (!await _context.MedicalServices.AnyAsync(m => m.Id == dto.MedicalServiceId))
+                return this.ToProblem(DoctorServiceErrors.MedicalServiceNotFound(dto.MedicalServiceId));
 
-            doctorService.DoctorId = dto.DoctorId;
-            doctorService.MedicalServiceId = dto.MedicalServiceId;
+            if (await _context.DoctorServices.AnyAsync(ds =>
+            ds.DoctorId == dto.DoctorId && ds.MedicalServiceId == dto.MedicalServiceId))
+                return this.ToProblem(DoctorServiceErrors.AlreadyExists);
 
+            doctorService.Update(dto.DoctorId, dto.MedicalServiceId);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
@@ -185,11 +179,11 @@ namespace EasyClinic.API.Controllers
             var doctorService = await _context.DoctorServices.FindAsync(id);
 
             if (doctorService is null)
-                return NotFound();
+                return this.ToProblem(DoctorServiceErrors.NotFound(id));
 
             var hasAppointments = await _context.Appointments.AnyAsync(a => a.DoctorServiceId == id);
-            if (hasAppointments)                
-                return Problem(detail: "Cannot delete this doctor-service link because it has appointments linked to it.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid Deleting");
+            if (hasAppointments)
+                return this.ToProblem(DoctorServiceErrors.HasAppointments);
             _context.DoctorServices.Remove(doctorService);
             await _context.SaveChangesAsync();
 

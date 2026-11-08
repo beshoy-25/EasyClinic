@@ -1,7 +1,9 @@
 ﻿using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
+using EasyClinic.API.Extensions;
 using EasyClinic.API.DTOs.Doctor;
 using EasyClinic.Domain.Entities;
+using EasyClinic.Domain.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +11,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using System.ComponentModel;
 using System.Security;
 using System.Threading.Tasks;
+
 
 namespace EasyClinic.API.Controllers
 {
@@ -91,7 +94,7 @@ namespace EasyClinic.API.Controllers
                 }).FirstOrDefaultAsync(cancellationToken);
 
             if (doctor is null)
-                return NotFound();
+                return this.ToProblem(DoctorErrors.NotFound(id));
 
 
             return Ok(doctor);
@@ -115,24 +118,12 @@ namespace EasyClinic.API.Controllers
         //[EndpointSummary("Creates a new doctor")] // relate with OpenAPI way
         //[EndpointDescription("Creates a new doctor for the current user and returns the created result.")]
         public async Task<ActionResult<DoctorDTO>> Create(CreateDoctorDTO dto)
-        {
-            var specializationExist = await _context.Specializations
-                    .AnyAsync(d => d.Id == dto.SpecializationId);
+        {            
+            if (!await _context.Specializations.AnyAsync(s => s.Id == dto.SpecializationId))
+                return this.ToProblem(DoctorErrors.SpecializationNotFound(dto.SpecializationId));
 
-            if(!specializationExist)
-                return Problem(
-                    detail: $"Specialization with id {dto.SpecializationId} does not exist.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Specialization"
-                    ); 
+            var doctor = Doctor.Create(dto.FullName, dto.PhoneNumber, dto.Email, dto.SpecializationId);
 
-            var doctor = new Doctor
-            {
-                FullName = dto.FullName,
-                PhoneNumber = dto.PhoneNumber,
-                Email = dto.Email,
-                SpecializationId = dto.SpecializationId
-            };
             _context.Doctors.Add(doctor);
             await _context.SaveChangesAsync();
 
@@ -158,20 +149,12 @@ namespace EasyClinic.API.Controllers
             var doctor = await _context.Doctors.FindAsync(id);
 
             if (doctor is null)
-                return NotFound();
+                return this.ToProblem(DoctorErrors.NotFound(id));
 
-            var specializationExists = await _context.Specializations.AnyAsync(s => s.Id == dto.SpecializationId);
-            if (!specializationExists)                            
-                return Problem(
-                    detail: $"Specialization with id {dto.SpecializationId} does not exist.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Specialization"
-                    );
+            if (!await _context.Specializations.AnyAsync(s => s.Id == dto.SpecializationId))
+                return this.ToProblem(DoctorErrors.SpecializationNotFound(dto.SpecializationId));
 
-            doctor.FullName = dto.FullName;
-            doctor.PhoneNumber = dto.PhoneNumber;
-            doctor.Email = dto.Email;
-            doctor.SpecializationId = dto.SpecializationId;
+            doctor.Update(dto.FullName, dto.PhoneNumber, dto.Email, dto.SpecializationId);
 
             await _context.SaveChangesAsync();
 
@@ -184,36 +167,21 @@ namespace EasyClinic.API.Controllers
             var doctor = await _context.Doctors.FindAsync(id);
 
             if(doctor is null) 
-                return NotFound();
+                return this.ToProblem(DoctorErrors.NotFound(id));
 
-            if (dto.SpecializationId.HasValue)
-            {
-                var specializationExists = await _context.Specializations.AnyAsync(s => s.Id == dto.SpecializationId);
-                if (!specializationExists)
-                    return Problem(
-                        detail: $"Specialization with id {dto.SpecializationId} does not exist.",
-                        statusCode: StatusCodes.Status400BadRequest,
-                        title: "Invalid Specialization");
+            if (dto.SpecializationId.HasValue &&
+                         !await _context.Specializations.AnyAsync(s => s.Id == dto.SpecializationId.Value))
+                return this.ToProblem(DoctorErrors.SpecializationNotFound(dto.SpecializationId.Value));
 
-                doctor.SpecializationId = dto.SpecializationId.Value;
-            }
 
-            if (dto.FullName is not null)
-            {
-                doctor.FullName = dto.FullName;
-            }
+            doctor.Update(
+                 dto.FullName ?? doctor.FullName,
+                 dto.PhoneNumber ?? doctor.PhoneNumber,
+                 dto.Email ?? doctor.Email,
+                 dto.SpecializationId ?? doctor.SpecializationId);
 
-            if(dto.PhoneNumber is not null)
-            {
-                doctor.PhoneNumber = dto.PhoneNumber;
-            }
 
-            if(dto.Email is not null)
-            {
-                doctor.Email = dto.Email;
-            }
 
-           
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -225,7 +193,7 @@ namespace EasyClinic.API.Controllers
             var doctor = await _context.Doctors.FindAsync(id);
 
             if (doctor is null)
-                return NotFound();
+                return this.ToProblem(DoctorErrors.NotFound(id));
 
             var hasDoctorServices = await _context.DoctorServices.AnyAsync(ds => ds.DoctorId == id);
             if (hasDoctorServices)                

@@ -2,7 +2,9 @@
 using EasyClinic.API.Auth;
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.Specializations;
+using EasyClinic.API.Extensions;
 using EasyClinic.Domain.Entities;
+using EasyClinic.Domain.Errors;
 using M04.MinimalFluentValidation.Filters;
 using Microsoft.EntityFrameworkCore;
 
@@ -61,12 +63,15 @@ namespace EasyClinic.API.Endpoints
                 Name = s.Name,
             }).FirstOrDefaultAsync(cancellationToken);
 
-            return specialization is null ? Results.NotFound() : Results.Ok(specialization);
+            return specialization is null
+                ? SpecializationErrors.NotFound(id).ToProblem()
+                : Results.Ok(specialization);
+
         }
 
         private static async Task<IResult> Create(CreateSpecializationDTO dto, AppDbContext context)
         {
-            var specialization = new Specialization { Name = dto.Name };
+            var specialization = Specialization.Create(dto.Name);
 
             context.Specializations.Add(specialization);
             await context.SaveChangesAsync();
@@ -81,11 +86,10 @@ namespace EasyClinic.API.Endpoints
         private static async Task<IResult> Update(int id,CreateSpecializationDTO dto,AppDbContext  context)
         {
             var specialization = await context.Specializations.FindAsync(id);
-
             if (specialization is null)
-                return Results.NotFound();
+                return SpecializationErrors.NotFound(id).ToProblem();
 
-            specialization.Name = dto.Name;
+            specialization.Rename(dto.Name);
             await context.SaveChangesAsync();
 
             return Results.NoContent();
@@ -96,12 +100,9 @@ namespace EasyClinic.API.Endpoints
             var specialization = await context.Specializations.FindAsync(id);
             if (specialization is null)
                 return Results.NotFound();
-            var hasDoctors = await context.Doctors.AnyAsync(d => d.SpecializationId == id);
-            if (hasDoctors)
-                return Results.Problem(
-                    detail: "Cannot delete this specialization because it has doctors linked to it.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Cannot Delete Specialization");
+
+            if (await context.Doctors.AnyAsync(d => d.SpecializationId == id))
+                    return SpecializationErrors.HasDoctors.ToProblem();
 
             context.Specializations.Remove(specialization);
             await context.SaveChangesAsync();

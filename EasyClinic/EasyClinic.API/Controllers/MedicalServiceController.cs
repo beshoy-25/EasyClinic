@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using EasyClinic.API.Extensions;
+using EasyClinic.Domain.Errors;
 
 namespace EasyClinic.API.Controllers
 {
@@ -68,7 +70,7 @@ namespace EasyClinic.API.Controllers
                     Price = m.Price
                 }).FirstOrDefaultAsync(cancellationToken);
             if (medicalService is null)
-                return NotFound();
+                return this.ToProblem(MedicalServiceErrors.NotFound(id));
 
 
             return Ok(medicalService);
@@ -90,13 +92,11 @@ namespace EasyClinic.API.Controllers
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<MedicalServiceDTO>> Create(CreateMedicalServiceDTO dto)
         {
-            var medicalService = new MedicalService
-            {
-                Name = dto.Name,
-                Description = dto.Description,
-                DurationInMinutes = dto.DurationInMinutes,
-                Price = dto.Price
-            };
+            var result = MedicalService.Create(dto.Name, dto.Description, dto.Price, dto.DurationInMinutes);
+            if (result.IsFailure)
+                return this.ToProblem(result.Error);
+
+            var medicalService = result.Value;
             _context.MedicalServices.Add(medicalService);
             await _context.SaveChangesAsync();
 
@@ -116,14 +116,12 @@ namespace EasyClinic.API.Controllers
         public async Task<IActionResult> Update(int id, CreateMedicalServiceDTO dto)
         {
             var medicalService = await _context.MedicalServices.FindAsync(id);
-
             if (medicalService is null)
-                return NotFound();
+                return this.ToProblem(MedicalServiceErrors.NotFound(id));
 
-            medicalService.Name = dto.Name;
-            medicalService.Description = dto.Description;
-            medicalService.Price = dto.Price;
-            medicalService.DurationInMinutes = dto.DurationInMinutes;
+            var result = medicalService.Update(dto.Name, dto.Description, dto.Price, dto.DurationInMinutes);
+            if (result.IsFailure)
+                return this.ToProblem(result.Error);
 
             await _context.SaveChangesAsync();
 
@@ -137,11 +135,12 @@ namespace EasyClinic.API.Controllers
             var medicalService = await _context.MedicalServices.FindAsync(id);
 
             if (medicalService is null)
-                return NotFound();
+                return this.ToProblem(MedicalServiceErrors.NotFound(id));
 
             var hasDoctorServices = await _context.DoctorServices.AnyAsync(ds => ds.MedicalServiceId == id);
-            if (hasDoctorServices)                
-                return Problem(detail: "Cannot delete this medical service because it has doctors linked to it.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid Deleting");
+            if (hasDoctorServices)
+                return this.ToProblem(MedicalServiceErrors.HasDoctors);
+
             _context.MedicalServices.Remove(medicalService);
             await _context.SaveChangesAsync();
 

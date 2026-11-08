@@ -2,7 +2,10 @@
 using EasyClinic.API.Data;
 using EasyClinic.API.DTOs.AppointmentStatus;
 using EasyClinic.API.DTOs.Specializations;
+using EasyClinic.API.Extensions;
 using EasyClinic.Domain.Entities;
+using EasyClinic.Domain.Errors;
+using EasyClinic.Domain.Abstractions;
 using M04.MinimalFluentValidation.Filters;
 using Microsoft.EntityFrameworkCore;
 
@@ -63,21 +66,16 @@ namespace EasyClinic.API.Endpoints
               Name = a.Name,
               Description = a.Description,
           }).FirstOrDefaultAsync(cancellationToken);
-
-            if (appointmentStatus is null)
-                return Results.NotFound();
-
-            return Results.Ok(appointmentStatus);
+            
+            return appointmentStatus is null
+                ? AppointmentStatusErrors.NotFound(id).ToProblem()
+                : Results.Ok(appointmentStatus);
         }
 
         private static async Task<IResult> Create(AppDbContext context,CreateAppointmentStatusDTO dto)
         {
-            var appointmentStatus = new AppointmentStatus
-            {
-                Name = dto.Name,
-                Description = dto.Description,
-            };
-
+            var appointmentStatus = AppointmentStatus.Create(dto.Name, dto.Description);
+                
             context.AppointmentStatuses.Add(appointmentStatus);
             await context.SaveChangesAsync();
 
@@ -94,15 +92,11 @@ namespace EasyClinic.API.Endpoints
         private static async Task<IResult> Update(int id,CreateAppointmentStatusDTO dto,AppDbContext context)
         {
             var appointmentStatus = await context.AppointmentStatuses.FindAsync(id);
-
             if (appointmentStatus is null)
-                return Results.NotFound();
+                return AppointmentStatusErrors.NotFound(id).ToProblem();
 
-            appointmentStatus.Name = dto.Name;
-            appointmentStatus.Description = dto.Description;
-
+            appointmentStatus.Update(dto.Name,dto.Description);
             await context.SaveChangesAsync();
-
             return Results.NoContent();
         }
         private static async Task<IResult> Delete(int id, AppDbContext context)
@@ -111,13 +105,9 @@ namespace EasyClinic.API.Endpoints
 
             if (appointmentStatus is null)
                 return  Results.NotFound();
-
-            var hasAppointments = await context.Appointments.AnyAsync(a => a.AppointmentStatusId == id);
-            if (hasAppointments)
-                return Results.Problem(
-                    detail: "Cannot delete this status because it has appointments linked to it.",
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Cannot Delete Specialization"); 
+           
+            if (await context.Appointments.AnyAsync(a => a.AppointmentStatusId == id))
+                return AppointmentStatusErrors.InUse.ToProblem();
 
             context.AppointmentStatuses.Remove(appointmentStatus);
             await context.SaveChangesAsync();

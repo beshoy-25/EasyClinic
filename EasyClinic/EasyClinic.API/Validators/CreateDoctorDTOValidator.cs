@@ -17,7 +17,8 @@ namespace EasyClinic.API.Validators
 
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("Doctor Email is required.")
-                .Matches("^+@+.com$").WithMessage("Email must be {yourname}@{orgainze like (gmail,microsoft)}.com like \'Name@gmail.com\'");
+                .Matches(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").WithMessage("Email must be {yourname}@{orgainze like (gmail,microsoft)}.{com, net,...} like \'Name@gmail.com\'");
+
             RuleFor(x => x.SpecializationId)
                 .NotEmpty().WithMessage("Specialization Id is required")
                 .GreaterThan(1).WithMessage("ID must be valid positive number");

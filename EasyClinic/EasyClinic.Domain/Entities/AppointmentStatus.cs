@@ -1,9 +1,20 @@
-﻿namespace EasyClinic.Domain.Entities
+﻿using EasyClinic.Domain.Abstractions;
+
+namespace EasyClinic.Domain.Entities
 {
-    public class AppointmentStatus
+    public class AppointmentStatus : Entity
     {
-        public int Id { get; set; } 
-        public string Name { get; set; } = string.Empty;    
-        public string Description { get; set; } = string.Empty;
+        private AppointmentStatus(){}
+        public string Name { get; private set; } = string.Empty;    
+        public string Description { get; private set; } = string.Empty;
+
+        public static AppointmentStatus Create(string name, string description) =>
+            new() { Name = name, Description = description };
+
+        public void Update(string name, string description)
+        {
+            Name = name;
+            Description = description;
+        }
     }
 }

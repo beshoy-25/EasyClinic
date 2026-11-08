@@ -1,12 +1,24 @@
-﻿namespace EasyClinic.Domain.Entities
+﻿using EasyClinic.Domain.Abstractions;
+
+namespace EasyClinic.Domain.Entities
 {
-    public class DoctorService
+    public class DoctorService :Entity
     {
-        public int Id { get; set; }
-        public int DoctorId { get; set; }
-        public Doctor Doctor { get; set; } = null!;
-        public int MedicalServiceId { get; set; }
-        public MedicalService MedicalService { get; set; } = null!;
+        private DoctorService(){}
+        public int DoctorId { get; private set; }
+        public Doctor Doctor { get; private set; } = null!;
+        public int MedicalServiceId { get; private set; }
+        public MedicalService MedicalService { get; private set; } = null!;
+
+
+        public static DoctorService Create(int doctorId, int medicalServiceId) =>
+       new() { DoctorId = doctorId, MedicalServiceId = medicalServiceId };
+
+        public void Update(int doctorId, int medicalServiceId)
+        {
+            DoctorId = doctorId;
+            MedicalServiceId = medicalServiceId;
+        }
 
     }
 }

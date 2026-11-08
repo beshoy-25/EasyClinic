@@ -1,10 +1,16 @@
-﻿namespace EasyClinic.Domain.Entities
+﻿using EasyClinic.Domain.Abstractions;
+
+namespace EasyClinic.Domain.Entities
 {
-    public class Specialization
+    public class Specialization : Entity
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
+        private Specialization(){}
+        public string Name { get; private set; } = string.Empty;
         //Navigation Property
-        public ICollection<Doctor> Doctors { get; set; } = new List<Doctor>();
+        public ICollection<Doctor> Doctors { get; private set; } = new List<Doctor>();
+
+        public static Specialization Create(string name) => new() { Name = name };
+        public void Rename(string name) => Name = name;
+
     }
 }
