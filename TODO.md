@@ -14,6 +14,8 @@
 - [ ] Daily limit check when rescheduling via PUT/PATCH
 - [ ] Dispatch domain events after SaveChanges (Infrastructure)
 - [x] Make the other 6 entities inherit Entity
+- [ ] Translate unique-constraint violations (DbUpdateException) to 409 in Infrastructure
+- [ ] Same duplicate check for MedicalService.Name and AppointmentStatus.Name (decide if needed)
 
 ## Course modules skipped (return after Clean Architecture)
 - [ ] Module 21: Performance (Rate Limiting on /login first, then caching)

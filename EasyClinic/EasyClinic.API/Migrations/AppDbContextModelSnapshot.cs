@@ -57,7 +57,7 @@ namespace EasyClinic.API.Migrations
 
                     b.HasIndex("PatientId");
 
-                    b.ToTable("Appointments", (string)null);
+                    b.ToTable("Appointments");
                 });
 
             modelBuilder.Entity("EasyClinic.Domain.Entities.AppointmentStatus", b =>
@@ -78,7 +78,7 @@ namespace EasyClinic.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AppointmentStatuses", (string)null);
+                    b.ToTable("AppointmentStatuses");
                 });
 
             modelBuilder.Entity("EasyClinic.Domain.Entities.Doctor", b =>
@@ -107,7 +107,7 @@ namespace EasyClinic.API.Migrations
 
                     b.HasIndex("SpecializationId");
 
-                    b.ToTable("Doctors", (string)null);
+                    b.ToTable("Doctors");
                 });
 
             modelBuilder.Entity("EasyClinic.Domain.Entities.DoctorService", b =>
@@ -131,7 +131,7 @@ namespace EasyClinic.API.Migrations
                     b.HasIndex("DoctorId", "MedicalServiceId")
                         .IsUnique();
 
-                    b.ToTable("DoctorServices", (string)null);
+                    b.ToTable("DoctorServices");
                 });
 
             modelBuilder.Entity("EasyClinic.Domain.Entities.MedicalService", b =>
@@ -159,7 +159,7 @@ namespace EasyClinic.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MedicalServices", (string)null);
+                    b.ToTable("MedicalServices");
                 });
 
             modelBuilder.Entity("EasyClinic.Domain.Entities.Patient", b =>
@@ -190,7 +190,7 @@ namespace EasyClinic.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Patients", (string)null);
+                    b.ToTable("Patients");
                 });
 
             modelBuilder.Entity("EasyClinic.Domain.Entities.Specialization", b =>
@@ -203,11 +203,15 @@ namespace EasyClinic.API.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Specializations", (string)null);
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Specializations");
                 });
 
             modelBuilder.Entity("EasyClinic.Domain.Entities.Appointment", b =>

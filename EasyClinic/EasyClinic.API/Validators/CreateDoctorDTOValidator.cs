@@ -21,7 +21,7 @@ namespace EasyClinic.API.Validators
 
             RuleFor(x => x.SpecializationId)
                 .NotEmpty().WithMessage("Specialization Id is required")
-                .GreaterThan(1).WithMessage("ID must be valid positive number");
+                .GreaterThanOrEqualTo(1).WithMessage("ID must be valid positive number");
 
         }
     }

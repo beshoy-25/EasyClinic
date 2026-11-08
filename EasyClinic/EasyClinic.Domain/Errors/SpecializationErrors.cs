@@ -8,4 +8,7 @@ public static class SpecializationErrors
 
     public static readonly Error HasDoctors =
         Error.Conflict("Specialization.HasDoctors", "Cannot delete a specialization that has doctors linked to it.");
+    // في SpecializationErrors
+    public static readonly Error NameAlreadyExists =
+        Error.Conflict("Specialization.NameAlreadyExists", "A specialization with this name already exists.");
 }

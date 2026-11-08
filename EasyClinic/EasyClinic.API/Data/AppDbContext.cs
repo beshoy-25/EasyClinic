@@ -47,6 +47,11 @@ namespace EasyClinic.API.Data
             modelBuilder.Entity<DoctorService>()
                 .HasIndex(ds => new { ds.DoctorId, ds.MedicalServiceId })
                 .IsUnique();
+            modelBuilder.Entity<Specialization>(e =>
+            {
+                e.Property(s => s.Name).HasMaxLength(100);
+                e.HasIndex(s => s.Name).IsUnique();
+            });
         }
     }
 }

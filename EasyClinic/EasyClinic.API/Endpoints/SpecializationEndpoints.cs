@@ -34,8 +34,11 @@ namespace EasyClinic.API.Endpoints
                 .Produces<SpecializationDTO>(StatusCodes.Status201Created)
                 .ProducesValidationProblem()
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
-                .ProducesProblem(StatusCodes.Status403Forbidden);
-            group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>().RequireAuthorization(Policies.AdminOnly);
+                .ProducesProblem(StatusCodes.Status403Forbidden)
+                .ProducesProblem(StatusCodes.Status409Conflict);
+            group.MapPut("/{id:int:min(1)}", Update).AddEndpointFilter<ValidationFilter<CreateSpecializationDTO>>()
+                .RequireAuthorization(Policies.AdminOnly)
+                .ProducesProblem(StatusCodes.Status409Conflict);
             group.MapDelete("/{id:int:min(1)}", Delete).RequireAuthorization(Policies.AdminOnly);
 
         }
@@ -71,7 +74,12 @@ namespace EasyClinic.API.Endpoints
 
         private static async Task<IResult> Create(CreateSpecializationDTO dto, AppDbContext context)
         {
-            var specialization = Specialization.Create(dto.Name);
+            var name = dto.Name.Trim();
+
+            if (await context.Specializations.AnyAsync(s => s.Name == name))
+                return SpecializationErrors.NameAlreadyExists.ToProblem();
+
+            var specialization = Specialization.Create(name);
 
             context.Specializations.Add(specialization);
             await context.SaveChangesAsync();
@@ -89,7 +97,12 @@ namespace EasyClinic.API.Endpoints
             if (specialization is null)
                 return SpecializationErrors.NotFound(id).ToProblem();
 
-            specialization.Rename(dto.Name);
+            var name = dto.Name.Trim();
+
+            if (await context.Specializations.AnyAsync(s => s.Id != id && s.Name == name))
+                return SpecializationErrors.NameAlreadyExists.ToProblem();
+
+            specialization.Rename(name);
             await context.SaveChangesAsync();
 
             return Results.NoContent();
