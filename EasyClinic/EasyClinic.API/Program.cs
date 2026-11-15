@@ -5,6 +5,7 @@ using EasyClinic.API.Endpoints;
 using EasyClinic.API.Filters;
 using EasyClinic.API.Middlewares;
 using EasyClinic.API.Options;
+using EasyClinic.Application.Abstractions.Persistence;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -139,6 +140,8 @@ namespace EasyClinic.API
             });
 
             builder.Services.AddSingleton(TimeProvider.System);
+
+            builder.Services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
             var app = builder.Build();
 
